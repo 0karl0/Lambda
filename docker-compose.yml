@@ -1,9 +1,9 @@
 version: '3.9'
 services:
   localstack:
-    image: localstack/localstack:2.3
+    image: localstack/localstack:latest
     environment:
-      - SERVICES=s3
+      - SERVICES=s3,lambda
       - AWS_DEFAULT_REGION=us-east-1
       - EDGE_PORT=4566
       - DEBUG=1
@@ -11,6 +11,7 @@ services:
       - "4566:4566"
     volumes:
       - "./local/localstack:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
       interval: 10s

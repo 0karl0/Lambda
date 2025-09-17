@@ -1,0 +1,129 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless AI-Powered Image Processing Pipeline
+
+Globals:
+  Function:
+    Runtime: python3.11
+    Timeout: 120
+    MemorySize: 2048
+    Tracing: Active
+    Environment:
+      Variables:
+        AWS_REGION: !Ref AWS::Region
+
+Parameters:
+  UploadBucketName:
+    Type: String
+    Description: Name of the S3 bucket that receives uploads from the web app.
+  MaskBucketName:
+    Type: String
+    Description: Name of the intermediate S3 bucket that stores masks and metadata.
+  OutputBucketName:
+    Type: String
+    Description: Name of the public S3 bucket that serves final processed assets.
+  SageMakerEndpointName:
+    Type: String
+    Description: Name of the SageMaker endpoint that generates masks.
+
+Resources:
+  UploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref UploadBucketName
+      NotificationConfiguration: {}
+
+  MaskBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref MaskBucketName
+
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref OutputBucketName
+      AccessControl: PublicRead
+      WebsiteConfiguration:
+        IndexDocument: index.html
+
+  TriggerSageMakerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-trigger-sagemaker"
+      CodeUri: ../lambdas/trigger_sagemaker/
+      Handler: app.handler
+      Description: Triggered by uploads to S3 and forwards images to SageMaker.
+      Environment:
+        Variables:
+          SAGEMAKER_ENDPOINT_NAME: !Ref SageMakerEndpointName
+          MASK_BUCKET: !Ref MaskBucketName
+          MASK_PREFIX: masks/
+          THUMBNAIL_MASK_PREFIX: thumbnail-masks/
+          MASK_METADATA_SUFFIX: .json
+          MASK_IMAGE_SUFFIX: .png
+      Events:
+        S3UploadEvent:
+          Type: S3
+          Properties:
+            Bucket: !Ref UploadBucket
+            Events: s3:ObjectCreated:*
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref UploadBucketName
+        - S3WritePolicy:
+            BucketName: !Ref MaskBucketName
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - sagemaker:InvokeEndpoint
+              Resource: !Sub "arn:${AWS::Partition}:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/${SageMakerEndpointName}"
+
+  ApplyMasksFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-apply-masks"
+      CodeUri: ../lambdas/apply_masks/
+      Handler: app.handler
+      Description: Scales masks and creates the final processed images.
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucketName
+          PROCESSED_PREFIX: processed/
+          THUMBNAIL_PREFIX: thumbnails/
+          MASK_METADATA_SUFFIX: .json
+      Events:
+        MaskSavedEvent:
+          Type: S3
+          Properties:
+            Bucket: !Ref MaskBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: .json
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref MaskBucketName
+        - S3ReadPolicy:
+            BucketName: !Ref UploadBucketName
+        - S3WritePolicy:
+            BucketName: !Ref OutputBucketName
+
+Outputs:
+  UploadBucketOutput:
+    Description: Upload bucket name.
+    Value: !Ref UploadBucketName
+  MaskBucketOutput:
+    Description: Mask bucket name.
+    Value: !Ref MaskBucketName
+  OutputBucketOutput:
+    Description: Output bucket name.
+    Value: !Ref OutputBucketName
+  TriggerSageMakerFunctionArn:
+    Description: ARN of the first Lambda function.
+    Value: !GetAtt TriggerSageMakerFunction.Arn
+  ApplyMasksFunctionArn:
+    Description: ARN of the second Lambda function.
+    Value: !GetAtt ApplyMasksFunction.Arn
