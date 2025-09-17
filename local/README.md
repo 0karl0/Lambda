@@ -24,7 +24,9 @@ This directory contains helper assets for running the Serverless AI-Powered Imag
    docker compose up --build
    ```
 
-   Wait until both the `localstack` and `sagemaker` containers report as healthy.
+   Wait until both the `localstack` and `sagemaker` containers report as healthy. Ensure the LocalStack container is configured
+   with the Lambda API (e.g. `SERVICES=s3,lambda`) before proceeding. If you update the LocalStack configuration, recreate the
+   stack with `docker compose down` followed by `docker compose up --build` so the changes take effect.
 
 2. **Provision buckets**
 
@@ -62,7 +64,8 @@ This directory contains helper assets for running the Serverless AI-Powered Imag
      --mask-bucket "$MASK_BUCKET"
    ```
 
-   This script subscribes the two Lambda functions to the relevant S3 events through the AWS CLI.
+   This script subscribes the two Lambda functions to the relevant S3 events through the AWS CLI. The Lambda service must be
+   enabled in LocalStack before running this script.
 
 6. **Upload an image**
 
