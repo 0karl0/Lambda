@@ -48,6 +48,16 @@ def parse_args() -> argparse.Namespace:
         default=1.0,
         help="Seconds to wait between attempts when checking for Lambda availability.",
     )
+    parser.add_argument(
+        "--trigger-function-name",
+        default="TriggerSageMakerFunction",
+        help="Logical ID of the Lambda that starts the SageMaker workflow.",
+    )
+    parser.add_argument(
+        "--apply-function-name",
+        default="ApplyMasksFunction",
+        help="Logical ID of the Lambda that processes generated masks.",
+    )
     return parser.parse_args()
 
 
@@ -160,23 +170,23 @@ def main() -> int:
 
     ensure_permission(
         lambda_client,
-        "TriggerSageMakerFunction",
+        args.trigger_function_name,
         f"arn:aws:s3:::{args.upload_bucket}",
     )
     trigger_arn = resolve_function_arn(
         lambda_client,
-        "TriggerSageMakerFunction",
+        args.trigger_function_name,
         wait_timeout=args.wait_timeout,
         poll_interval=args.poll_interval,
     )
     ensure_permission(
         lambda_client,
-        "ApplyMasksFunction",
+        args.apply_function_name,
         f"arn:aws:s3:::{args.mask_bucket}",
     )
     apply_arn = resolve_function_arn(
         lambda_client,
-        "ApplyMasksFunction",
+        args.apply_function_name,
         wait_timeout=args.wait_timeout,
         poll_interval=args.poll_interval,
     )
@@ -201,10 +211,10 @@ def main() -> int:
             {
                 "upload_bucket": args.upload_bucket,
                 "mask_bucket": args.mask_bucket,
-                "functions": [
-                    "TriggerSageMakerFunction",
-                    "ApplyMasksFunction",
-                ],
+                "functions": {
+                    args.trigger_function_name: trigger_arn,
+                    args.apply_function_name: apply_arn,
+                },
             },
             indent=2,
         )
