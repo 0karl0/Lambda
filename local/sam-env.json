@@ -1,5 +1,6 @@
 {
   "TriggerSageMakerFunction": {
+    "SAGEMAKER_ENDPOINT_NAME": "local-rembg-endpoint",
     "SAGEMAKER_ENDPOINT_URL": "http://sagemaker:8080/invocations",
     "S3_ENDPOINT_URL": "http://localstack:4566",
     "AWS_REGION": "us-east-1",

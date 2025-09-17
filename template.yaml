@@ -50,7 +50,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-trigger-sagemaker"
-      CodeUri: ../lambdas/trigger_sagemaker/
+      CodeUri: lambdas/trigger_sagemaker/
       Handler: app.handler
       Description: Triggered by uploads to S3 and forwards images to SageMaker.
       Environment:
@@ -83,7 +83,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-apply-masks"
-      CodeUri: ../lambdas/apply_masks/
+      CodeUri: lambdas/apply_masks/
       Handler: app.handler
       Description: Scales masks and creates the final processed images.
       Environment:
