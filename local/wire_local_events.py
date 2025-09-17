@@ -6,9 +6,11 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from typing import Dict
 
 import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 
 def parse_args() -> argparse.Namespace:
@@ -31,6 +33,21 @@ def parse_args() -> argparse.Namespace:
         default=".json",
         help="Suffix used for mask metadata objects.",
     )
+    parser.add_argument(
+        "--wait-timeout",
+        type=float,
+        default=30.0,
+        help=(
+            "Seconds to wait for 'sam local start-lambda' to expose functions before "
+            "giving up."
+        ),
+    )
+    parser.add_argument(
+        "--poll-interval",
+        type=float,
+        default=1.0,
+        help="Seconds to wait between attempts when checking for Lambda availability.",
+    )
     return parser.parse_args()
 
 
@@ -50,25 +67,54 @@ def ensure_permission(
         pass
 
 
-def resolve_function_arn(lambda_client, function_name: str) -> str:
-    """Return the deployed ARN for the given Lambda function."""
+def resolve_function_arn(
+    lambda_client,
+    function_name: str,
+    *,
+    wait_timeout: float,
+    poll_interval: float,
+) -> str:
+    """Return the deployed ARN for the given Lambda function.
 
-    try:
-        response = lambda_client.get_function(FunctionName=function_name)
-    except Exception as exc:  # pylint: disable=broad-except
-        raise RuntimeError(
-            f"Unable to look up function ARN for {function_name}. "
-            "Ensure 'sam local start-lambda' is running."
-        ) from exc
+    The SAM CLI may take a moment to expose Lambda metadata when
+    ``sam local start-lambda`` is booting. To provide a smoother developer
+    experience we poll the endpoint until the function appears or a timeout
+    is reached.
+    """
 
-    configuration = response.get("Configuration") or {}
-    function_arn = configuration.get("FunctionArn")
-    if not function_arn:
-        raise RuntimeError(
-            f"Lambda get_function response missing ARN for {function_name}: {response}"
-        )
+    deadline = time.monotonic() + wait_timeout
+    last_error: Exception | None = None
 
-    return function_arn
+    while True:
+        try:
+            response = lambda_client.get_function(FunctionName=function_name)
+        except (BotoCoreError, ClientError) as exc:
+            last_error = exc
+        else:
+            configuration = response.get("Configuration") or {}
+            function_arn = configuration.get("FunctionArn")
+            if function_arn:
+                return function_arn
+            last_error = RuntimeError(
+                f"Lambda get_function response missing ARN for {function_name}: {response}"
+            )
+
+        if time.monotonic() >= deadline:
+            break
+
+        time.sleep(max(poll_interval, 0.1))
+
+    error_message = (
+        f"Unable to look up function ARN for {function_name}. "
+        "Ensure 'sam local start-lambda' is running and reachable. "
+        "If it runs inside Docker, pass an appropriate --lambda-endpoint (e.g. "
+        "http://host.docker.internal:3001)."
+    )
+
+    if last_error:
+        raise RuntimeError(error_message) from last_error
+
+    raise RuntimeError(error_message)
 
 
 def configure_notifications(
@@ -117,13 +163,23 @@ def main() -> int:
         "TriggerSageMakerFunction",
         f"arn:aws:s3:::{args.upload_bucket}",
     )
-    trigger_arn = resolve_function_arn(lambda_client, "TriggerSageMakerFunction")
+    trigger_arn = resolve_function_arn(
+        lambda_client,
+        "TriggerSageMakerFunction",
+        wait_timeout=args.wait_timeout,
+        poll_interval=args.poll_interval,
+    )
     ensure_permission(
         lambda_client,
         "ApplyMasksFunction",
         f"arn:aws:s3:::{args.mask_bucket}",
     )
-    apply_arn = resolve_function_arn(lambda_client, "ApplyMasksFunction")
+    apply_arn = resolve_function_arn(
+        lambda_client,
+        "ApplyMasksFunction",
+        wait_timeout=args.wait_timeout,
+        poll_interval=args.poll_interval,
+    )
 
     configure_notifications(
         s3_client,
