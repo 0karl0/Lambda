@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Serverless AI-Powered Image Processing Pipeline</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script defer src="https://sdk.amazonaws.com/js/aws-sdk-2.1484.0.min.js"></script>
+    <script defer src="config.js"></script>
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <main class="container">
+      <h1>Serverless AI-Powered Image Processing Pipeline</h1>
+      <p>
+        Upload an image to remove the background using an event-driven, serverless
+        AI workflow. The original image is processed by SageMaker, and the
+        background-removed output and thumbnail will appear below when ready.
+      </p>
+      <form id="upload-form">
+        <label for="image-input" class="file-input-label">Choose an image</label>
+        <input id="image-input" type="file" accept="image/*" required />
+        <button type="submit">Upload</button>
+      </form>
+      <div id="status" role="status" aria-live="polite"></div>
+      <div class="progress" hidden>
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <section id="results" hidden>
+        <h2>Processed Results</h2>
+        <div class="results-grid">
+          <figure>
+            <figcaption>Background Removed</figcaption>
+            <img id="result-image" alt="Processed image" />
+          </figure>
+          <figure>
+            <figcaption>Thumbnail</figcaption>
+            <img id="thumbnail-image" alt="Processed thumbnail" />
+          </figure>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

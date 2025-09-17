@@ -1,0 +1,33 @@
+version: '3.9'
+services:
+  localstack:
+    image: localstack/localstack:2.3
+    environment:
+      - SERVICES=s3
+      - AWS_DEFAULT_REGION=us-east-1
+      - EDGE_PORT=4566
+      - DEBUG=1
+    ports:
+      - "4566:4566"
+    volumes:
+      - "./local/localstack:/var/lib/localstack"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  sagemaker:
+    build:
+      context: ./sagemaker
+    environment:
+      - AWS_REGION=us-east-1
+      - S3_ENDPOINT_URL=http://localstack:4566
+      - MODEL_ARTIFACT_BUCKET=
+      - MODEL_ARTIFACT_PREFIX=
+      - THUMBNAIL_SIZE=512,512
+    ports:
+      - "8080:8080"
+    depends_on:
+      localstack:
+        condition: service_healthy
