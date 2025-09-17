@@ -1,0 +1,20 @@
+{
+  "TriggerSageMakerFunction": {
+    "SAGEMAKER_ENDPOINT_URL": "http://sagemaker:8080/invocations",
+    "S3_ENDPOINT_URL": "http://localstack:4566",
+    "AWS_REGION": "us-east-1",
+    "MASK_BUCKET": "serverless-ai-masks-local",
+    "MASK_PREFIX": "masks/",
+    "THUMBNAIL_MASK_PREFIX": "thumbnail-masks/",
+    "MASK_METADATA_SUFFIX": ".json",
+    "MASK_IMAGE_SUFFIX": ".png"
+  },
+  "ApplyMasksFunction": {
+    "S3_ENDPOINT_URL": "http://localstack:4566",
+    "AWS_REGION": "us-east-1",
+    "OUTPUT_BUCKET": "serverless-ai-output-local",
+    "PROCESSED_PREFIX": "processed/",
+    "THUMBNAIL_PREFIX": "thumbnails/",
+    "MASK_METADATA_SUFFIX": ".json"
+  }
+}
