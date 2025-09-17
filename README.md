@@ -45,7 +45,9 @@ A dedicated [local guide](local/README.md) walks through standing up LocalStack,
 1. `docker compose up --build` to start LocalStack and the SageMaker mock service.
 2. `./local/setup-local.sh` to create the three S3 buckets in LocalStack.
 3. `sam build` and `sam local start-lambda` to run both Lambda functions inside Docker.
-4. `python local/wire_local_events.py` to connect S3 events to the locally running Lambdas.
+4. `python local/wire_local_events.py` (optionally with
+   `--trigger-function-name/--apply-function-name` overrides) to connect S3 events to the locally
+   running Lambdas.
 5. Upload a file to the upload bucket (via CLI or the frontend) and watch the pipeline finish end-to-end.
 
 ## Deploying to AWS

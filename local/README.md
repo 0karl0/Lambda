@@ -62,7 +62,10 @@ This directory contains helper assets for running the Serverless AI-Powered Imag
      --mask-bucket "$MASK_BUCKET"
    ```
 
-   This script subscribes the two Lambda functions to the relevant S3 events through the AWS CLI.
+   This script subscribes the two Lambda functions to the relevant S3 events through the AWS CLI. If
+   you renamed the Lambda logical IDs in `template.yaml`, pass the new names via
+   `--trigger-function-name` and `--apply-function-name` so the helper connects to the expected
+   functions.
 
 6. **Upload an image**
 
