@@ -50,6 +50,27 @@ def ensure_permission(
         pass
 
 
+def resolve_function_arn(lambda_client, function_name: str) -> str:
+    """Return the deployed ARN for the given Lambda function."""
+
+    try:
+        response = lambda_client.get_function(FunctionName=function_name)
+    except Exception as exc:  # pylint: disable=broad-except
+        raise RuntimeError(
+            f"Unable to look up function ARN for {function_name}. "
+            "Ensure 'sam local start-lambda' is running."
+        ) from exc
+
+    configuration = response.get("Configuration") or {}
+    function_arn = configuration.get("FunctionArn")
+    if not function_arn:
+        raise RuntimeError(
+            f"Lambda get_function response missing ARN for {function_name}: {response}"
+        )
+
+    return function_arn
+
+
 def configure_notifications(
     s3_client,
     bucket: str,
@@ -91,20 +112,18 @@ def main() -> int:
         "lambda", endpoint_url=args.lambda_endpoint, region_name=args.region
     )
 
-    account_id = "000000000000"
-    trigger_arn = f"arn:aws:lambda:{args.region}:{account_id}:function:TriggerSageMakerFunction"
-    apply_arn = f"arn:aws:lambda:{args.region}:{account_id}:function:ApplyMasksFunction"
-
     ensure_permission(
         lambda_client,
         "TriggerSageMakerFunction",
         f"arn:aws:s3:::{args.upload_bucket}",
     )
+    trigger_arn = resolve_function_arn(lambda_client, "TriggerSageMakerFunction")
     ensure_permission(
         lambda_client,
         "ApplyMasksFunction",
         f"arn:aws:s3:::{args.mask_bucket}",
     )
+    apply_arn = resolve_function_arn(lambda_client, "ApplyMasksFunction")
 
     configure_notifications(
         s3_client,
