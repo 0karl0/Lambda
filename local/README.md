@@ -65,7 +65,15 @@ This directory contains helper assets for running the Serverless AI-Powered Imag
    This script subscribes the two Lambda functions to the relevant S3 events through the AWS CLI. If
    you renamed the Lambda logical IDs in `template.yaml`, pass the new names via
    `--trigger-function-name` and `--apply-function-name` so the helper connects to the expected
-   functions.
+   functions. These flags default to `TriggerSageMakerFunction` and `ApplyMasksFunction`, matching
+   the logical IDs defined in the SAM template.
+
+   Additional helpful flags:
+
+   - `--trigger-function-name` — Logical ID for the Lambda that kicks off the SageMaker processing
+     step. Use this if you customised the stack and need to target a differently named function.
+   - `--apply-function-name` — Logical ID for the Lambda that applies masks and writes the outputs.
+     Override this when the downstream Lambda was renamed in your template.
 
 6. **Upload an image**
 
