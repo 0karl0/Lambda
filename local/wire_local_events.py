@@ -83,8 +83,8 @@ def resolve_function_arn(
     *,
     wait_timeout: float,
     poll_interval: float,
-) -> str:
-    """Return the deployed ARN for the given Lambda function.
+) -> tuple[str, str]:
+    """Return the deployed ARN and runtime name for the given Lambda function.
 
     The SAM CLI may take a moment to expose Lambda metadata when
     ``sam local start-lambda`` is booting. To provide a smoother developer
@@ -103,8 +103,9 @@ def resolve_function_arn(
         else:
             configuration = response.get("Configuration") or {}
             function_arn = configuration.get("FunctionArn")
+            resolved_name = configuration.get("FunctionName") or function_name
             if function_arn:
-                return function_arn
+                return function_arn, resolved_name
             last_error = RuntimeError(
                 f"Lambda get_function response missing ARN for {function_name}: {response}"
             )
@@ -173,7 +174,7 @@ def main() -> int:
         args.trigger_function_name,
         f"arn:aws:s3:::{args.upload_bucket}",
     )
-    trigger_arn = resolve_function_arn(
+    trigger_arn, trigger_resolved_name = resolve_function_arn(
         lambda_client,
         args.trigger_function_name,
         wait_timeout=args.wait_timeout,
@@ -184,7 +185,7 @@ def main() -> int:
         args.apply_function_name,
         f"arn:aws:s3:::{args.mask_bucket}",
     )
-    apply_arn = resolve_function_arn(
+    apply_arn, apply_resolved_name = resolve_function_arn(
         lambda_client,
         args.apply_function_name,
         wait_timeout=args.wait_timeout,
@@ -212,8 +213,14 @@ def main() -> int:
                 "upload_bucket": args.upload_bucket,
                 "mask_bucket": args.mask_bucket,
                 "functions": {
-                    args.trigger_function_name: trigger_arn,
-                    args.apply_function_name: apply_arn,
+                    args.trigger_function_name: {
+                        "resolved_name": trigger_resolved_name,
+                        "arn": trigger_arn,
+                    },
+                    args.apply_function_name: {
+                        "resolved_name": apply_resolved_name,
+                        "arn": apply_arn,
+                    },
                 },
             },
             indent=2,
